@@ -10,6 +10,7 @@ import java.util.List;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class Product {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -31,11 +32,8 @@ public class Product {
     @Column(name = "Available", nullable = false)
     private Boolean available;
 
-    @Column(name = "CategoryId", length = 4, nullable = false)
-    private String categoryId;
-
-    @ManyToOne
-    @JoinColumn(name = "CategoryId", insertable = false, updatable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "CategoryId", nullable = false)
     private Category category;
 
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL)

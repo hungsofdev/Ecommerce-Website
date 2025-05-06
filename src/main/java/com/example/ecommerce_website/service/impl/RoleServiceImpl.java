@@ -3,53 +3,63 @@ package com.example.ecommerce_website.service.impl;
 import com.example.ecommerce_website.entity.Role;
 import com.example.ecommerce_website.repository.RoleRepository;
 import com.example.ecommerce_website.service.RoleService;
+import com.example.ecommerce_website.service.dto.RoleDTO;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
-@Transactional
 @RequiredArgsConstructor
+@Transactional
 public class RoleServiceImpl implements RoleService {
-
     private final RoleRepository roleRepository;
 
     @Override
-    @Transactional(readOnly = true)
-    public List<Role> getAllRoles() {
-        return roleRepository.findAll();
+    public RoleDTO create(RoleDTO dto) {
+        Role role = Role.builder()
+                .id(dto.getId())
+                .name(dto.getName())
+                .build();
+        Role saved = roleRepository.save(role);
+        return mapToDTO(saved);
     }
 
     @Override
-    @Transactional(readOnly = true)
-    public Optional<Role> getById(String id) {
-        return roleRepository.findById(id);
+    public RoleDTO update(String id, RoleDTO dto) {
+        Role role = roleRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Role not found"));
+        role.setName(dto.getName());
+        Role updated = roleRepository.save(role);
+        return mapToDTO(updated);
     }
 
     @Override
-    public Role createRole(Role role) {
-        if (roleRepository.existsById(role.getId())) {
-            throw new IllegalArgumentException("Role id đã tồn tại: " + role.getId());
-        }
-        return roleRepository.save(role);
-    }
-
-    @Override
-    public Role updateRole(Role role) {
-        Role existing = roleRepository.findById(role.getId())
-                .orElseThrow(() -> new IllegalArgumentException("Role id không tồn tại: " + role.getId()));
-        existing.setName(role.getName());
-        return roleRepository.save(existing);
-    }
-
-    @Override
-    public void deleteRole(String id) {
-        if (!roleRepository.existsById(id)) {
-            throw new IllegalArgumentException("Role id không tồn tại: " + id);
-        }
+    public void delete(String id) {
         roleRepository.deleteById(id);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<RoleDTO> findById(String id) {
+        return roleRepository.findById(id).map(this::mapToDTO);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<RoleDTO> findAll() {
+        return roleRepository.findAll()
+                .stream().map(this::mapToDTO).collect(Collectors.toList());
+    }
+
+    private RoleDTO mapToDTO(Role r) {
+        return RoleDTO.builder()
+                .id(r.getId())
+                .name(r.getName())
+                .build();
     }
 }

@@ -1,81 +1,118 @@
 package com.example.ecommerce_website.service.impl;
 
-import com.example.ecommerce_website.entity.Product;
-import com.example.ecommerce_website.repository.CategoryRepository;
-import com.example.ecommerce_website.repository.ProductRepository;
-import com.example.ecommerce_website.service.ProductService;
+import com.example.ecommerce_website.entity.*;
+import com.example.ecommerce_website.repository.*;
+import com.example.ecommerce_website.service.*;
+import com.example.ecommerce_website.service.dto.*;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
+/**
+ * ServiceImpl cho Product
+ */
 @Service
-@Transactional
 @RequiredArgsConstructor
+@Transactional
 public class ProductServiceImpl implements ProductService {
-
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
 
     @Override
     @Transactional(readOnly = true)
-    public List<Product> getAllProducts() {
-        return productRepository.findAll();
+    public Page<ProductDTO> findAll(Pageable pageable) {
+        return productRepository.findAll(pageable)
+                .map(this::mapToDTO);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<Product> getById(Integer id) {
-        return productRepository.findById(id);
+    public List<ProductDTO> findByCategory(String categoryId) {
+        return productRepository.findByCategoryId(categoryId)
+                .stream().map(this::mapToDTO).collect(Collectors.toList());
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<Product> getByCategoryId(String categoryId) {
-        return productRepository.findByCategoryId(categoryId);
+    public Optional<ProductDTO> findById(Integer id) {
+        return productRepository.findById(id).map(this::mapToDTO);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<Product> searchByName(String keyword) {
-        return productRepository.findByNameContainingIgnoreCase(keyword);
+    public List<ProductDTO> searchByName(String name) {
+        return productRepository.findByNameContainingIgnoreCase(name)
+                .stream().map(this::mapToDTO).collect(Collectors.toList());
     }
 
     @Override
-    public Product createProduct(Product product) {
-        // Kiểm tra Category tồn tại
-        if (!categoryRepository.existsById(product.getCategoryId())) {
-            throw new IllegalArgumentException("Category id không tồn tại: " + product.getCategoryId());
-        }
-        return productRepository.save(product);
+    @Transactional(readOnly = true)
+    public List<ProductDTO> searchByPriceRange(Double min, Double max) {
+        return productRepository.findByPriceBetween(min, max)
+                .stream().map(this::mapToDTO).collect(Collectors.toList());
     }
 
     @Override
-    public Product updateProduct(Product product) {
-        Product existing = productRepository.findById(product.getId())
-                .orElseThrow(() -> new IllegalArgumentException("Product id không tồn tại: " + product.getId()));
-        existing.setName(product.getName());
-        existing.setPrice(product.getPrice());
-        existing.setImage(product.getImage());
-        existing.setAvailable(product.getAvailable());
-        // Nếu đổi category, kiểm tra tồn tại
-        if (!existing.getCategoryId().equals(product.getCategoryId())) {
-            if (!categoryRepository.existsById(product.getCategoryId())) {
-                throw new IllegalArgumentException("Category id không tồn tại: " + product.getCategoryId());
-            }
-            existing.setCategoryId(product.getCategoryId());
-        }
-        return productRepository.save(existing);
+    @Transactional(readOnly = true)
+    public List<ProductDTO> findRelated(Integer productId) {
+        Product p = productRepository.findById(productId)
+                .orElseThrow(() -> new EntityNotFoundException("Product not found"));
+        return productRepository.findByCategoryId(p.getCategory().getId())
+                .stream().filter(prod -> !prod.getId().equals(productId))
+                .map(this::mapToDTO).collect(Collectors.toList());
     }
 
     @Override
-    public void deleteProduct(Integer id) {
-        if (!productRepository.existsById(id)) {
-            throw new IllegalArgumentException("Product id không tồn tại: " + id);
-        }
+    public ProductDTO create(ProductDTO dto) {
+        Category cat = categoryRepository.findById(dto.getCategoryId())
+                .orElseThrow(() -> new EntityNotFoundException("Category not found"));
+        Product entity = Product.builder()
+                .name(dto.getName())
+                .image(dto.getImage())
+                .price(dto.getPrice())
+                .createDate(dto.getCreateDate())
+                .available(dto.getAvailable())
+                .category(cat)
+                .build();
+        Product saved = productRepository.save(entity);
+        return mapToDTO(saved);
+    }
+
+    @Override
+    public ProductDTO update(Integer id, ProductDTO dto) {
+        Product entity = productRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Product not found"));
+        entity.setName(dto.getName());
+        entity.setImage(dto.getImage());
+        entity.setPrice(dto.getPrice());
+        entity.setAvailable(dto.getAvailable());
+        // createDate unchanged
+        Product updated = productRepository.save(entity);
+        return mapToDTO(updated);
+    }
+
+    @Override
+    public void delete(Integer id) {
         productRepository.deleteById(id);
     }
-}
 
+    private ProductDTO mapToDTO(Product p) {
+        return ProductDTO.builder()
+                .id(p.getId())
+                .name(p.getName())
+                .image(p.getImage())
+                .price(p.getPrice())
+                .createDate(p.getCreateDate())
+                .available(p.getAvailable())
+                .categoryId(p.getCategory().getId())
+                .categoryName(p.getCategory().getName())
+                .build();
+    }
+}

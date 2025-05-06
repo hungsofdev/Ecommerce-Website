@@ -8,20 +8,19 @@ import lombok.*;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class Authority {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "Id")
-    private Integer id;
+    private Long id;
 
-    @Column(name = "RoleId", length = 10, nullable = false)
-    private String roleId;
-
-    @ManyToOne
-    @JoinColumn(name = "Username", referencedColumnName = "Username")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "Username", nullable = false)
     private Account account;
 
-    @ManyToOne
-    @JoinColumn(name = "RoleId", insertable = false, updatable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "RoleId", nullable = false)
     private Role role;
+
 }

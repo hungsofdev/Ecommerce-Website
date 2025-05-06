@@ -1,73 +1,88 @@
 package com.example.ecommerce_website.service.impl;
 
+import com.example.ecommerce_website.entity.Order;
 import com.example.ecommerce_website.entity.OrderDetail;
+import com.example.ecommerce_website.entity.Product;
 import com.example.ecommerce_website.repository.OrderDetailRepository;
 import com.example.ecommerce_website.repository.OrderRepository;
 import com.example.ecommerce_website.repository.ProductRepository;
 import com.example.ecommerce_website.service.OrderDetailService;
+import com.example.ecommerce_website.service.dto.OrderDetailDTO;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
-@Transactional
 @RequiredArgsConstructor
+@Transactional
 public class OrderDetailServiceImpl implements OrderDetailService {
-
     private final OrderDetailRepository orderDetailRepository;
     private final OrderRepository orderRepository;
     private final ProductRepository productRepository;
 
     @Override
     @Transactional(readOnly = true)
-    public List<OrderDetail> getAllOrderDetails() {
-        return orderDetailRepository.findAll();
+    public Optional<OrderDetailDTO> findById(Long id) {
+        return orderDetailRepository.findById(id).map(this::mapToDTO);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<OrderDetail> getById(Long id) {
-        return orderDetailRepository.findById(id);
+    public List<OrderDetailDTO> findByOrderId(Long orderId) {
+        return orderDetailRepository.findByOrderId(orderId)
+                .stream().map(this::mapToDTO).collect(Collectors.toList());
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<OrderDetail> getByOrderId(Long orderId) {
-        return orderDetailRepository.findByOrderId(orderId);
+    public List<OrderDetailDTO> findAll() {
+        return orderDetailRepository.findAll()
+                .stream().map(this::mapToDTO).collect(Collectors.toList());
     }
 
     @Override
-    public OrderDetail createOrderDetail(OrderDetail od) {
-        // Kiểm tra Order tồn tại
-        if (!orderRepository.existsById(od.getOrderId())) {
-            throw new IllegalArgumentException("Order id không tồn tại: " + od.getOrderId());
-        }
-        // Kiểm tra Product tồn tại
-        if (!productRepository.existsById(od.getProductId())) {
-            throw new IllegalArgumentException("Product id không tồn tại: " + od.getProductId());
-        }
-        return orderDetailRepository.save(od);
+    public OrderDetailDTO create(OrderDetailDTO dto) {
+        Order o = orderRepository.findById(dto.getId())
+                .orElseThrow(() -> new EntityNotFoundException("Order not found"));
+        Product p = productRepository.findById(dto.getProductId())
+                .orElseThrow(() -> new EntityNotFoundException("Product not found"));
+        OrderDetail od = OrderDetail.builder()
+                .order(o)
+                .product(p)
+                .price(dto.getPrice())
+                .quantity(dto.getQuantity())
+                .build();
+        OrderDetail saved = orderDetailRepository.save(od);
+        return mapToDTO(saved);
     }
 
     @Override
-    public OrderDetail updateOrderDetail(OrderDetail od) {
-        OrderDetail existing = orderDetailRepository.findById(od.getId())
-                .orElseThrow(() -> new IllegalArgumentException("OrderDetail id không tồn tại: " + od.getId()));
-        // Cập nhật các trường cần thiết
-        existing.setQuantity(od.getQuantity());
-        existing.setPrice(od.getPrice());
-        return orderDetailRepository.save(existing);
+    public OrderDetailDTO update(Long id, OrderDetailDTO dto) {
+        OrderDetail od = orderDetailRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("OrderDetail not found"));
+        od.setQuantity(dto.getQuantity());
+        od.setPrice(dto.getPrice());
+        OrderDetail updated = orderDetailRepository.save(od);
+        return mapToDTO(updated);
     }
 
     @Override
-    public void deleteOrderDetail(Long id) {
-        if (!orderDetailRepository.existsById(id)) {
-            throw new IllegalArgumentException("OrderDetail id không tồn tại: " + id);
-        }
+    public void delete(Long id) {
         orderDetailRepository.deleteById(id);
     }
-}
 
+    private OrderDetailDTO mapToDTO(OrderDetail od) {
+        return OrderDetailDTO.builder()
+                .id(od.getId())
+                .productId(od.getProduct().getId())
+                .productName(od.getProduct().getName())
+                .price(od.getPrice())
+                .quantity(od.getQuantity())
+                .build();
+    }
+}

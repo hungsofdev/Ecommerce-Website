@@ -10,14 +10,12 @@ import java.util.List;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class Order {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "Id")
     private Long id;
-
-    @Column(name = "Username", length = 50, nullable = false)
-    private String username;
 
     @Column(name = "CreateDate", nullable = false)
     private LocalDateTime createDate;
@@ -25,8 +23,8 @@ public class Order {
     @Column(name = "Address", length = 100)
     private String address;
 
-    @ManyToOne
-    @JoinColumn(name = "Username", insertable = false, updatable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "Username", nullable = false)
     private Account account;
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL)

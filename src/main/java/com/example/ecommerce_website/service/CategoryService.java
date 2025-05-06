@@ -1,34 +1,16 @@
 package com.example.ecommerce_website.service;
 
 import com.example.ecommerce_website.entity.Category;
+import com.example.ecommerce_website.service.dto.CategoryDTO;
 
 import java.util.List;
 import java.util.Optional;
 
 public interface CategoryService {
-    /**
-     * Lấy danh sách tất cả Category
-     */
-    List<Category> getAllCategories();
-
-    /**
-     * Tìm Category theo id
-     */
-    Optional<Category> getById(String id);
-
-    /**
-     * Tạo mới Category
-     */
-    Category createCategory(Category category);
-
-    /**
-     * Cập nhật Category
-     */
-    Category updateCategory(Category category);
-
-    /**
-     * Xóa Category theo id
-     */
-    void deleteCategory(String id);
+    CategoryDTO create(CategoryDTO categoryDTO);
+    CategoryDTO update(String id, CategoryDTO categoryDTO);
+    void delete(String id);
+    Optional<CategoryDTO> findById(String id);
+    List<CategoryDTO> findAll();
 }
 
